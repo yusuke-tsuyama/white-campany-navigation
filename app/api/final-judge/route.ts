@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODEL } from "@/lib/constants";
 
-const MODEL = "claude-sonnet-4-6";
+
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       typeof scoreResult.score === "number" ? scoreResult.score : 50;
 
     const msg = await anthropic.messages.create({
-      model: MODEL,
+      model: CLAUDE_MODEL,
       max_tokens: 2000,
       temperature: 0.2,
       messages: [
