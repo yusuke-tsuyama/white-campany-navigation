@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import unzipper from "unzipper";
 import { fetchEdinetDocumentText } from "@/lib/edinet";
 
-const MODEL = "claude-sonnet-4-5";
+const MODEL = "claude-sonnet-4-6";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
