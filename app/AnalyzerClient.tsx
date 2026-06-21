@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
 type AnalyzeResponse = {
@@ -60,7 +59,14 @@ const TERMS = `第1条（サービスの目的）
 ・機密情報を含むPDFのアップロードはユーザー自身の判断と責任において行うものとします。
 
 第7条（準拠法・管轄）
-本規約は日本法に準拠します。`;
+本規約は日本法に準拠します。
+
+第8条（お問い合わせ）
+本規約に関するお問い合わせは下記までご連絡ください。
+合同会社リベルダード
+メール：info@liberdade.sakura.ne.jp
+
+最終更新日：2026年6月21日`;
 
 
 function OpenWorkSampleImage() {
@@ -246,6 +252,95 @@ function TermsModal({ onAgree, buttonText = "次へ", requireScroll = true }: { 
   );
 }
 
+function PrivacyModal({ onAgree, isFirstVisit }: { onAgree: () => void; isFirstVisit: boolean }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1500, padding: 16 }}>
+      <div style={{ backgroundColor: "#fff", borderRadius: 20, width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", maxHeight: "85dvh" }}>
+        <div style={{ padding: "20px 20px 12px", borderBottom: "1px solid #f1f5f9" }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 4px" }}>プライバシーポリシー</h2>
+          <p style={{ fontSize: 15, color: "#94a3b8", margin: 0 }}>ホワイト企業ナビ</p>
+          <p style={{ fontSize: 11, color: "#cbd5e1", margin: "2px 0 0" }}>provided by 合同会社リベルダード</p>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+          <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 16px" }}>最終更新日：2026年6月21日</p>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>1. はじめに</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>合同会社リベルダードは、「ホワイト企業ナビ」をご利用いただくにあたって取得する情報の取り扱いについて、このプライバシーポリシーで説明します。</p>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>2. 取得する情報</h3>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>アカウント情報（登録ユーザーのみ）</p>
+            <ul style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: "0 0 8px", paddingLeft: 18 }}>
+              <li>メールアドレス</li>
+              <li>パスワード（暗号化して保管します。運営者が平文で確認することはありません）</li>
+            </ul>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>利用時に生成される情報</p>
+            <ul style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0, paddingLeft: 18 }}>
+              <li>アップロードされた画像から抽出した口コミテキスト・評価スコア</li>
+              <li>EDINETから取得した財務情報のサマリー</li>
+              <li>AIが生成した総合判定コメント</li>
+              <li>ユーザーID（ログイン済みの場合）またはゲスト識別情報</li>
+              <li>分析実行日時</li>
+            </ul>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>3. 取得しない情報・保存しない情報</h3>
+            <ul style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0, paddingLeft: 18 }}>
+              <li>アップロードされた画像ファイルそのもの（分析後に保持しません）</li>
+              <li>氏名・住所・電話番号などの個人を特定できる情報（任意で入力した場合を除く）</li>
+              <li>クレジットカード番号などの決済情報（本サービスは現時点で有料課金機能がありません）</li>
+            </ul>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>4. 外部サービスへの情報送信</h3>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>Anthropic（Claude API）</p>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: "0 0 8px" }}>アップロードされた画像と分析リクエストの内容を、Anthropic社（米国）のAI APIに送信します。画像データはサーバーに保存されませんが、APIへの送信は行われます。この点をご理解のうえでご利用ください。</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>EDINET（金融庁）</p>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: "0 0 8px" }}>企業名などの検索クエリをEDINETに送信し、有価証券報告書などの公開情報を取得します。個人情報はEDINETには送信しません。</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>Supabase</p>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>分析結果（口コミテキスト・財務サマリー・総合判定・ユーザーID・日時）は、Supabase Inc.（米国）が提供するデータベースサービスに保存されます。</p>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>5. 情報の利用目的</h3>
+            <ul style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0, paddingLeft: 18 }}>
+              <li>本サービスの機能提供（分析結果の表示・履歴の管理）</li>
+              <li>利用状況の把握とサービス改善</li>
+              <li>不正利用の防止</li>
+            </ul>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>6. 情報の第三者提供</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>取得した情報を、上記「外部サービスへの情報送信」に記載の事業者以外の第三者に提供することはありません。ただし、法令に基づく要請があった場合はこの限りではありません。</p>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>7. 情報の管理・保護</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>分析結果データは、ユーザーごとにアクセス制御（RLS：行レベルセキュリティ）を設定し、他のユーザーが閲覧できないよう管理しています。</p>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>8. ユーザーの権利</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>ご自身の分析履歴の削除をご希望の場合は、下記お問い合わせ先までご連絡ください。</p>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>9. Cookieとアクセス解析</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>本サービスでは、ログイン状態の維持のためにCookieを使用することがあります。</p>
+          </section>
+          <section style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>10. プライバシーポリシーの変更</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>本ポリシーは、法令の改正やサービスの変更にともなって改定する場合があります。重要な変更がある場合は、本サービス上でお知らせします。</p>
+          </section>
+          <section>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>お問い合わせ</h3>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>{"合同会社リベルダード\nメール：info@liberdade.sakura.ne.jp"}</p>
+          </section>
+        </div>
+        <div style={{ padding: "12px 20px 20px", borderTop: "1px solid #f1f5f9" }}>
+          <button onClick={onAgree} style={btn("#0f172a")}>{isFirstVisit ? "同意する" : "閉じる"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Tutorial({ onClose }: { onClose: () => void }) {
   const [current, setCurrent] = useState(0);
   const isLast = current === TUTORIAL_STEPS.length - 1;
@@ -293,8 +388,7 @@ function Tutorial({ onClose }: { onClose: () => void }) {
 }
 
 export default function AnalyzerClient({ userId }: { userId: string | null }) {
-  const router = useRouter();
-  const [phase, setPhase] = useState<"splash" | "terms" | "tutorial" | "main">("splash");
+  const [phase, setPhase] = useState<"splash" | "terms" | "privacy" | "tutorial" | "main">("splash");
   const [isFirstVisit, setIsFirstVisit] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -350,10 +444,14 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
 
   const handleAgreeTerms = () => {
     if (isFirstVisit) {
-      router.push("/privacy");
+      setPhase("privacy");
     } else {
       setPhase("main");
     }
+  };
+  const handleAgreePrivacy = () => {
+    localStorage.setItem("terms_agreed", "1");
+    setPhase(localStorage.getItem("tutorial_seen") ? "main" : "tutorial");
   };
   const handleCloseTutorial = () => { localStorage.setItem("tutorial_seen", "1"); setPhase("main"); };
   const handleReset = () => {
@@ -509,6 +607,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
           requireScroll={isFirstVisit}
         />
       )}
+      {phase === "privacy" && <PrivacyModal onAgree={handleAgreePrivacy} isFirstVisit={isFirstVisit} />}
       {phase === "tutorial" && <Tutorial onClose={handleCloseTutorial} />}
       <main style={{ maxWidth: 480, margin: "0 auto", padding: "16px 12px 80px" }}>
         <div style={{ marginBottom: 20 }}>
@@ -662,7 +761,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
         )}
         <div style={{ marginTop: 32, paddingTop: 16, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "center", gap: 24 }}>
           <button onClick={() => setPhase("terms")} style={{ fontSize: 12, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>利用規約</button>
-          <Link href="/privacy" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "underline" }}>プライバシーポリシー</Link>
+          <button onClick={() => setPhase("privacy")} style={{ fontSize: 12, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>プライバシーポリシー</button>
         </div>
       </main>
     </>
