@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
 type AnalyzeResponse = {
@@ -218,9 +219,10 @@ function Splash() {
   );
 }
 
-function TermsModal({ onAgree }: { onAgree: () => void }) {
-  const [scrolled, setScrolled] = useState(false);
+function TermsModal({ onAgree, buttonText = "次へ", requireScroll = true }: { onAgree: () => void; buttonText?: string; requireScroll?: boolean }) {
+  const [scrolled, setScrolled] = useState(!requireScroll);
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!requireScroll) return;
     const el = e.currentTarget;
     if (el.scrollHeight - el.scrollTop <= el.clientHeight + 40) setScrolled(true);
   };
@@ -236,8 +238,8 @@ function TermsModal({ onAgree }: { onAgree: () => void }) {
           <p style={{ fontSize: 13, lineHeight: 1.8, color: "#334155", whiteSpace: "pre-wrap", margin: 0 }}>{TERMS}</p>
         </div>
         <div style={{ padding: "12px 20px 20px", borderTop: "1px solid #f1f5f9" }}>
-          {!scrolled && <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginBottom: 8, marginTop: 0 }}>下までスクロールすると同意できます</p>}
-          <button onClick={onAgree} disabled={!scrolled} style={btn("#0f172a", !scrolled)}>同意してはじめる</button>
+          {requireScroll && !scrolled && <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginBottom: 8, marginTop: 0 }}>下までスクロールすると進めます</p>}
+          <button onClick={onAgree} disabled={!scrolled} style={btn("#0f172a", !scrolled)}>{buttonText}</button>
         </div>
       </div>
     </div>
@@ -291,7 +293,9 @@ function Tutorial({ onClose }: { onClose: () => void }) {
 }
 
 export default function AnalyzerClient({ userId }: { userId: string | null }) {
+  const router = useRouter();
   const [phase, setPhase] = useState<"splash" | "terms" | "tutorial" | "main">("splash");
+  const [isFirstVisit, setIsFirstVisit] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -323,19 +327,33 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const proceed = () => {
       const agreedTerms = localStorage.getItem("terms_agreed");
       const seenTutorial = localStorage.getItem("tutorial_seen");
+      setIsFirstVisit(!agreedTerms);
       if (!agreedTerms) setPhase("terms");
       else if (!seenTutorial) setPhase("tutorial");
       else setPhase("main");
+    };
+
+    if (sessionStorage.getItem("splash_shown")) {
+      proceed();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      sessionStorage.setItem("splash_shown", "1");
+      proceed();
     }, 1800);
     return () => clearTimeout(timer);
   }, []);
 
   const handleAgreeTerms = () => {
-    localStorage.setItem("terms_agreed", "1");
-    setPhase(localStorage.getItem("tutorial_seen") ? "main" : "tutorial");
+    if (isFirstVisit) {
+      router.push("/privacy");
+    } else {
+      setPhase("main");
+    }
   };
   const handleCloseTutorial = () => { localStorage.setItem("tutorial_seen", "1"); setPhase("main"); };
   const handleReset = () => {
@@ -484,7 +502,13 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
   return (
     <>
       {phase === "splash" && <Splash />}
-      {phase === "terms" && <TermsModal onAgree={handleAgreeTerms} />}
+      {phase === "terms" && (
+        <TermsModal
+          onAgree={handleAgreeTerms}
+          buttonText={isFirstVisit ? "次へ" : "閉じる"}
+          requireScroll={isFirstVisit}
+        />
+      )}
       {phase === "tutorial" && <Tutorial onClose={handleCloseTutorial} />}
       <main style={{ maxWidth: 480, margin: "0 auto", padding: "16px 12px 80px" }}>
         <div style={{ marginBottom: 20 }}>
@@ -636,6 +660,10 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
             <div style={{ marginTop: 12 }}><button onClick={handleReset} style={{ ...btn("#f1f5f9"), color: "#0f172a" }}>🔄 次の企業を分析する</button></div>
           </div>
         )}
+        <div style={{ marginTop: 32, paddingTop: 16, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "center", gap: 24 }}>
+          <button onClick={() => setPhase("terms")} style={{ fontSize: 12, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>利用規約</button>
+          <Link href="/privacy" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "underline" }}>プライバシーポリシー</Link>
+        </div>
       </main>
     </>
   );
