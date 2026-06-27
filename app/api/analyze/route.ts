@@ -1,10 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/constants";
+import { getAdminClient } from "@/lib/supabaseAdmin";
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
+    // --- レート制限（同一IP 1日30回まで）---
+    const ip = (req.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const supabaseAdmin = getAdminClient();
+      const { data: rateRecord } = await supabaseAdmin
+        .from("rate_limits")
+        .select("count")
+        .eq("ip_address", ip)
+        .eq("date", today)
+        .maybeSingle();
+
+      if (rateRecord && rateRecord.count >= 30) {
+        return NextResponse.json(
+          { error: "本日の利用上限に達しました。明日また試してください。" },
+          { status: 429 }
+        );
+      }
+
+      if (rateRecord) {
+        await supabaseAdmin
+          .from("rate_limits")
+          .update({ count: rateRecord.count + 1 })
+          .eq("ip_address", ip)
+          .eq("date", today);
+      } else {
+        await supabaseAdmin
+          .from("rate_limits")
+          .insert({ ip_address: ip, date: today, count: 1 });
+      }
+    } catch {
+      // レート制限の失敗は無視して分析を続行
+    }
+    // --- レート制限ここまで ---
+
     const formData = await req.formData();
     const file = formData.get("image") as File | null;
     if (!file) {
