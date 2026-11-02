@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ConfirmedBlock, SectionDivider } from "@/app/RichText";
+import { SummaryText, SUMMARY_BG } from "@/app/SummaryText";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AnalysisDetailPage({
@@ -166,22 +167,12 @@ export default async function AnalysisDetailPage({
         </div>
       )}
 
-      {/* IR要約 */}
-      <div style={card}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 8 }}>
+      {/* 決算資料の要約 */}
+      <div style={{ ...card, backgroundColor: SUMMARY_BG }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 12 }}>
           決算資料の要約
         </h2>
-        <p
-          style={{
-            fontSize: 14,
-            lineHeight: 1.8,
-            color: "#334155",
-            whiteSpace: "pre-wrap",
-            margin: 0,
-          }}
-        >
-          {data.ir_summary || "なし"}
-        </p>
+        {data.ir_summary ? <SummaryText text={data.ir_summary} /> : <p style={{ fontSize: 14, color: "#334155", margin: 0 }}>なし</p>}
       </div>
 
       {/* 生データ（折りたたみ） */}

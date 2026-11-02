@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { ConfirmedBlock, SectionDivider } from "./RichText";
+import { SummaryText, SUMMARY_BG } from "./SummaryText";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -110,22 +111,6 @@ function ExampleShot() {
       <p style={{ fontSize: 11, color: "#64748b", margin: "0 0 6px", textAlign: "center" }}>イメージ図（架空の会社のダミー数値）</p>
       <img src="/example-screenshot.jpg" alt="撮影範囲の例（ダミー数値）" style={{ width: "100%", maxWidth: 300, display: "block", margin: "0 auto", borderRadius: 6 }} />
       <p style={{ fontSize: 11, color: "#64748b", margin: "6px 0 0", textAlign: "center", lineHeight: 1.6 }}>上の図のように、8項目の数値・残業時間・有給休暇消化率が入る範囲で撮影してください。会社名は入力欄に入れるので、画像に写らなくて構いません。</p>
-    </div>
-  );
-}
-
-/** 決算資料の要約の表示。「■」見出し・「・」箇条書きを整形し、念のためMarkdown記号も取り除く */
-function SummaryText({ text }: { text: string }) {
-  const lines = text.split("\n").map((l) => l.replace(/\*\*/g, "").replace(/^#{1,6}\s*/, "").trimEnd());
-  return (
-    <div style={{ fontSize: 14, lineHeight: 1.8, color: "#334155" }}>
-      {lines.map((l, i) => {
-        const t = l.trim();
-        if (!t || /^-{3,}$/.test(t)) return <div key={i} style={{ height: 6 }} />;
-        if (t.startsWith("■")) return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, margin: "12px 0 4px", color: "#0f172a" }}>{t.replace(/^■\s*/, "")}</h3>;
-        if (/^[・\-\*•]\s*/.test(t)) return <div key={i} style={{ paddingLeft: 16, textIndent: -16 }}>・{t.replace(/^[・\-\*•]\s*/, "")}</div>;
-        return <p key={i} style={{ margin: "0 0 4px" }}>{t}</p>;
-      })}
     </div>
   );
 }
@@ -714,7 +699,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
         {edinetSkipped && <div style={{ ...card, backgroundColor: "#f8fafc" }}><p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>ℹ️ 決算資料なしで確認ポイントを整理します（非上場・EDINET未対応企業）</p></div>}
         {docData?.error && !edinetSkipped && <div style={{ ...card, backgroundColor: "#fef2f2" }}><p style={{ color: "#dc2626", fontSize: 14, margin: 0 }}>⚠️ {docData.error}</p></div>}
         {docData?.summary && (
-          <div style={card}>
+          <div style={{ ...card, backgroundColor: SUMMARY_BG }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 12 }}>決算資料の要約</h2>
             <SummaryText text={docData.summary} />
             <div style={{ marginTop: 12 }}>
