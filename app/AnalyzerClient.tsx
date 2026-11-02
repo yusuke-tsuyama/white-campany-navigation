@@ -27,7 +27,7 @@ type FinalJudgeResponse = { finalJudge?: { format: "v2"; financialConditions?: s
 type Step = { label: string; done: boolean; active: boolean };
 
 const TUTORIAL_STEPS = [
-  { icon: "📷", title: "OpenWorkのスクリーンショットをアップロード", desc: "OpenWorkの企業評価ページのスクリーンショットをアップロードしてください。", sample: true },
+  { icon: "📷", title: "OpenWorkのスクリーンショットをアップロード", desc: "OpenWorkの企業評価ページで、「社員による会社評価」のレーダーチャート（8項目の数値）が、すべて入るように撮影して、アップロードしてください。", sample: true },
   { icon: "🤖", title: "AIが画像の数値を読み取る", desc: "総合評価・回答者数・項目別評価など、画像に表示されている数値をAIが読み取ります。点数での判定や採点は行いません。" },
   { icon: "📊", title: "決算資料を取得", desc: "上場企業はEDINETから有価証券報告書を自動取得。非上場企業は決算書PDFをアップロードして、数値を取り出せます。" },
   { icon: "⚖️", title: "確認ポイントの整理", desc: "口コミデータと決算資料から読み取れた事実を整理し、応募前に確認したいことと面接での質問例をまとめます。企業の良し悪しの判定はしません。" },
@@ -80,100 +80,6 @@ const TERMS = `第1条（サービスの目的）
 最終更新日：2026年6月21日`;
 
 
-function OpenWorkSampleImage() {
-  const center = { x: 160, y: 430 };
-  const r = 80;
-  const values = [3.1, 3.5, 4.0, 4.1, 4.3, 2.7, 3.9, 3.6];
-  const n = values.length;
-  const angle = (i: number) => (Math.PI * 2 * i) / n - Math.PI / 2;
-  const pt = (i: number, val: number) => ({
-    x: center.x + r * (val / 5) * Math.cos(angle(i)),
-    y: center.y + r * (val / 5) * Math.sin(angle(i)),
-  });
-  const gridPts = (ratio: number) =>
-    values.map((_, i) => {
-      const p = { x: center.x + r * ratio * Math.cos(angle(i)), y: center.y + r * ratio * Math.sin(angle(i)) };
-      return `${p.x},${p.y}`;
-    }).join(" ");
-  const dataPath = values.map((val, i) => {
-    const p = pt(i, val);
-    return `${i === 0 ? "M" : "L"}${p.x},${p.y}`;
-  }).join(" ") + "Z";
-
-  return (
-    <svg viewBox="0 0 320 310" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-      <defs>
-        <clipPath id="svgClip">
-          <rect width="320" height="420"/>
-        </clipPath>
-      </defs>
-      <rect width="320" height="420" fill="#ffffff"/>
-
-      {/* openworkヘッダー（青） */}
-      <rect width="320" height="40" fill="#1565c0"/>
-      <text x="12" y="26" fontSize="15" fontWeight="bold" fill="white">openwork</text>
-      <rect x="230" y="9" width="52" height="22" rx="4" fill="#ffffff" fillOpacity="0.25"/>
-      <text x="256" y="24" fontSize="8" fill="white" textAnchor="middle">無料登録</text>
-
-      {/* 検索バー */}
-      <rect x="8" y="48" width="304" height="26" rx="5" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="1"/>
-      <text x="18" y="65" fontSize="10" fill="#94a3b8">社名から検索</text>
-      <line x1="0" y1="82" x2="320" y2="82" stroke="#e2e8f0" strokeWidth="1"/>
-
-      {/* 中途採用中バッジ */}
-      <rect x="56" y="90" width="60" height="15" rx="3" fill="none" stroke="#94a3b8" strokeWidth="0.8"/>
-      <text x="86" y="101" fontSize="7.5" fill="#64748b" textAnchor="middle">中途採用中</text>
-
-      {/* 会社ロゴ */}
-      <rect x="12" y="108" width="40" height="40" rx="6" fill="#1565c0"/>
-      <text x="32" y="133" fontSize="8.5" fontWeight="bold" fill="white" textAnchor="middle">ABCDE</text>
-
-      {/* 会社名・星評価 */}
-      <text x="60" y="124" fontSize="13" fontWeight="bold" fill="#1e293b">株式会社ABCDE</text>
-      <text x="60" y="142" fontSize="11" fill="#fbbf24">★★★★☆</text>
-      <line x1="0" y1="158" x2="320" y2="158" stroke="#e2e8f0" strokeWidth="1"/>
-
-      {/* タブバー */}
-      <rect x="0" y="158" width="320" height="30" fill="#f8fafc"/>
-      <text x="30" y="177" fontSize="9" fontWeight="bold" fill="#1565c0" textAnchor="middle">TOP</text>
-      <text x="95" y="177" fontSize="9" fill="#94a3b8" textAnchor="middle">社員クチコミ</text>
-      <text x="165" y="177" fontSize="9" fill="#94a3b8" textAnchor="middle">年収</text>
-      <text x="215" y="177" fontSize="9" fill="#94a3b8" textAnchor="middle">質問</text>
-      <text x="270" y="177" fontSize="9" fill="#94a3b8" textAnchor="middle">採用情報</text>
-      <line x1="0" y1="188" x2="320" y2="188" stroke="#e2e8f0" strokeWidth="1"/>
-
-      {/* 社員による会社評価 */}
-      <text x="160" y="208" fontSize="10" fontWeight="bold" fill="#1e293b" textAnchor="middle">社員による会社評価（1112人）</text>
-      <line x1="0" y1="216" x2="320" y2="216" stroke="#e2e8f0" strokeWidth="1"/>
-
-      {/* 総合スコア */}
-      <text x="160" y="240" fontSize="11" fill="#fbbf24" textAnchor="middle">★★★★☆  3.75</text>
-      <rect x="218" y="226" width="46" height="18" rx="9" fill="none" stroke="#16a34a" strokeWidth="1"/>
-      <text x="241" y="239" fontSize="8" fill="#16a34a" textAnchor="middle">上位２%</text>
-
-      {/* 待遇面の満足度 */}
-      <text x="160" y="256" fontSize="9" fill="#64748b" textAnchor="middle">待遇面の満足度</text>
-      <text x="160" y="270" fontSize="11" fontWeight="bold" fill="#1e293b" textAnchor="middle">3.1</text>
-
-      {/* レーダーチャート（下で見切れる） */}
-      <g clipPath="url(#svgClip)">
-        {[0.25, 0.5, 0.75, 1].map((ratio, i) => (
-          <polygon key={i} points={gridPts(ratio)} fill="none" stroke="#e2e8f0" strokeWidth="0.8"/>
-        ))}
-        {values.map((_, i) => {
-          const p = pt(i, 5);
-          return <line key={i} x1={center.x} y1={center.y} x2={p.x} y2={p.y} stroke="#e2e8f0" strokeWidth="0.8"/>;
-        })}
-        <path d={dataPath} fill="rgba(100,160,220,0.2)" stroke="#4a90d9" strokeWidth="1.5"/>
-        {values.map((val, i) => {
-          const p = pt(i, val);
-          return <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#4a90d9"/>;
-        })}
-      </g>
-    </svg>
-  );
-}
-
 function friendlyError(raw: string): string {
   if (raw.includes("overloaded") || raw.includes("529")) return "AIサーバーが混雑しています。1〜3分後にもう一度お試しください。";
   if (raw.includes("unauthorized") || raw.includes("401")) return "認証エラーです。再ログインしてください。";
@@ -203,7 +109,7 @@ function ExampleShot() {
     <div style={{ marginTop: 8, border: "1px dashed #94a3b8", borderRadius: 10, padding: 8, backgroundColor: "#f8fafc" }}>
       <p style={{ fontSize: 11, color: "#64748b", margin: "0 0 6px", textAlign: "center" }}>イメージ図（架空の会社のダミー数値）</p>
       <img src="/example-screenshot.jpg" alt="撮影範囲の例（ダミー数値）" style={{ width: "100%", maxWidth: 300, display: "block", margin: "0 auto", borderRadius: 6 }} />
-      <p style={{ fontSize: 11, color: "#64748b", margin: "6px 0 0", textAlign: "center", lineHeight: 1.6 }}>このように、8項目の数値・残業時間・有給休暇消化率が入る範囲で撮影してください。会社名は入力欄に入れるので、画像に写らなくて構いません。</p>
+      <p style={{ fontSize: 11, color: "#64748b", margin: "6px 0 0", textAlign: "center", lineHeight: 1.6 }}>上の図のように、8項目の数値・残業時間・有給休暇消化率が入る範囲で撮影してください。会社名は入力欄に入れるので、画像に写らなくて構いません。</p>
     </div>
   );
 }
@@ -386,7 +292,7 @@ function Tutorial({ onClose }: { onClose: () => void }) {
           {(TUTORIAL_STEPS[current] as any).sample && (
             <div style={{ marginTop: 16 }}>
 
-              <OpenWorkSampleImage />
+              <ExampleShot />
 
             </div>
           )}
@@ -570,6 +476,14 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
     } catch (e: any) { setEdinetData({ error: friendlyError(e?.message || "決算資料の検索に失敗しました。") }); }
     finally { setEdinetLoading(false); }
   };
+  const handleLogout = async () => {
+    try {
+      const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+      await supabase.auth.signOut();
+    } catch {}
+    setUser(null);
+    window.location.reload();
+  };
   const handleSkipEdinet = () => { setEdinetSkipped(true); setDocData({ summary: "決算資料なし（非上場・EDINET未対応企業）" }); };
   const handlePdfAnalyze = async () => {
     if (!pdfFile || !pdfConsent) return;
@@ -648,12 +562,25 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
               <p style={{ fontSize: 14, color: "#94a3b8", margin: 0 }}>口コミ情報と決算資料をもとに<br/>企業を分析する転職支援ツール</p>
               <p style={{ fontSize: 11, color: "#94a3b8", margin: "2px 0 0" }}>provided by 合同会社リベルダード</p>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-              <button onClick={() => setPhase("tutorial")} style={{ fontSize: 14, color: "#64748b", background: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600 }}>使い方</button>
-              <Link href="/history" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>履歴 →</Link>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button onClick={() => setPhase("tutorial")} style={{ fontSize: 14, color: "#64748b", background: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600 }}>使い方</button>
+                <Link href="/history" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>履歴 →</Link>
+              </div>
+              {user ? (
+                <button onClick={handleLogout} style={{ fontSize: 12, color: "#64748b", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>ログアウト</button>
+              ) : (
+                <Link href="/login" style={{ fontSize: 12, color: "#1d4ed8", textDecoration: "underline" }}>ログイン / 新規登録</Link>
+              )}
             </div>
           </div>
         </div>
+        {!user && (
+          <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, lineHeight: 1.7, color: "#1e3a8a" }}>
+            メールアドレスでログインすると、診断結果を保存して、あとから履歴で見返せます。分析の前にログインしてください。{" "}
+            <Link href="/login" style={{ color: "#1d4ed8", fontWeight: 600 }}>ログイン / 新規登録 →</Link>
+          </div>
+        )}
         <div style={card}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 4 }}>① 企業名（正式名称）</label>
           <input type="text" value={companyInput} onChange={e => setCompanyInput(e.target.value.slice(0, 60))} placeholder="例: 株式会社ABCD" style={{ width: "100%", boxSizing: "border-box", padding: "12px", fontSize: 16, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 4 }} />
@@ -813,7 +740,14 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
             <SectionDivider />
             <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>💬 面接での質問例</h3>
             <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.questions.map((it, i) => <li key={i}>{it.question}{it.basis && <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>基づく情報: {it.basis}</span>}</li>)}</ul>
-            <button onClick={handleSave} disabled={saveLoading} style={btn("#1d4ed8", saveLoading)}>{saveLoading ? "保存中..." : "この診断を保存する"}</button>
+            {user ? (
+              <button onClick={handleSave} disabled={saveLoading} style={btn("#1d4ed8", saveLoading)}>{saveLoading ? "保存中..." : "この診断を保存する"}</button>
+            ) : (
+              <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 14px", fontSize: 12, lineHeight: 1.7, color: "#1e3a8a" }}>
+                ログインしていないため、この診断は保存できません。ログインしてから分析すると、結果を保存して、履歴で見返せます（ログインの手続きの途中で、いま表示している結果は消えます）。{" "}
+                <Link href="/login" style={{ color: "#1d4ed8", fontWeight: 600 }}>ログイン / 新規登録 →</Link>
+              </div>
+            )}
             {saveMessage && <p style={{ marginTop: 10, fontSize: 14, textAlign: "center", color: "#16a34a" }}>{saveMessage}</p>}
             <div style={{ marginTop: 12 }}><button onClick={handleReset} style={{ ...btn("#f1f5f9"), color: "#0f172a" }}>🔄 次の企業を分析する</button></div>
           </div>

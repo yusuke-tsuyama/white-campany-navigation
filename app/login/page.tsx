@@ -49,6 +49,9 @@ export default function LoginPage() {
         <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24 }}>
           メールアドレスでログイン・新規登録
         </p>
+        <p style={{ fontSize: 12, color: "#64748b", marginTop: -16, marginBottom: 24, lineHeight: 1.7 }}>
+          ログインすると、診断結果を保存して、履歴から見返せます。
+        </p>
         <input
           type="email"
           placeholder="your@email.com"
