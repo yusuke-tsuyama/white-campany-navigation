@@ -544,8 +544,6 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <img src="/app-icon.png" alt="icon" style={{ width: 36, height: 36, borderRadius: 8, marginRight: 8 }} /><h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 2px" }}>ホワイト企業ナビ</h1>
-              <p style={{ fontSize: 14, color: "#94a3b8", margin: 0 }}>口コミ情報と決算資料をもとに<br/>企業を分析する転職支援ツール</p>
-              <p style={{ fontSize: 11, color: "#94a3b8", margin: "2px 0 0" }}>provided by 合同会社リベルダード</p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -562,14 +560,14 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
         </div>
         {!user && (
           <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, lineHeight: 1.7, color: "#1e3a8a" }}>
-            メールアドレスでログインすると、診断結果を保存して、あとから履歴で見返せます。分析の前にログインしてください。{" "}
+            メールアドレスでログインすると、診断結果を履歴に保存できます。分析の前にログインしてください。{" "}
             <Link href="/login" style={{ color: "#1d4ed8", fontWeight: 600 }}>ログイン / 新規登録 →</Link>
           </div>
         )}
         <div style={card}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 4 }}>① 企業名（正式名称）</label>
           <input type="text" value={companyInput} onChange={e => setCompanyInput(e.target.value.slice(0, 60))} placeholder="例: 株式会社ABCD" style={{ width: "100%", boxSizing: "border-box", padding: "12px", fontSize: 16, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 4 }} />
-          <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 16px", lineHeight: 1.6 }}>「株式会社」などを含む正式名称を、OpenWorkのページからコピーして貼り付けてください。決算資料の検索に使います。入力した企業名と、画像の企業が同じかご確認ください。</p>
+          <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 16px", lineHeight: 1.6 }}>株式会社を含む正式名称を、OpenWorkのページからコピーして貼り付けてください。画像の企業と同じかご確認ください。</p>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 4 }}>② OpenWorkのスクリーンショット</label>
           <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px", lineHeight: 1.6 }}>「社員による会社評価」のレーダーチャート（8項目の数値）が、すべて入るように撮影してください。</p>
           <details style={{ marginBottom: 12 }}>
@@ -741,6 +739,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
           <button onClick={() => setPhase("terms")} style={{ fontSize: 12, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>利用規約</button>
           <button onClick={() => setPhase("privacy")} style={{ fontSize: 12, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>プライバシーポリシー</button>
         </div>
+        <p style={{ fontSize: 11, color: "#94a3b8", margin: "10px 0 0", textAlign: "center" }}>provided by 合同会社リベルダード</p>
       </main>
     </>
   );

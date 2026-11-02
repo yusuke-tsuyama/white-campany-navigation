@@ -1,7 +1,7 @@
 {
   "name": "企業分析アプリ",
   "short_name": "企業分析",
-  "description": "口コミ×IRで企業のホワイト度を分析するアプリ",
+  "description": "口コミと決算資料から、応募前に確認したいことを整理するアプリ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
