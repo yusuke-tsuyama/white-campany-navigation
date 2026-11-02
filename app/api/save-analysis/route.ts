@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
         user_id: authData.user.id,
         company_name: body.companyName ?? null,
         screenshot_extracted: body.extracted,
-        image_score: body.scoreResult,
+        // image_score は NOT NULL 列。画像ベースのスコアは廃止したため、空のオブジェクトを入れる
+        image_score: body.scoreResult ?? {},
         ir_summary: body.irSummary ?? null,
         final_judge: body.finalJudge ?? null,
       })

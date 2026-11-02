@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { ConfirmedBlock, SectionDivider } from "@/app/RichText";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AnalysisDetailPage({
@@ -22,7 +23,10 @@ export default async function AnalysisDetailPage({
 
   if (error || !data) notFound();
 
-  const score = data.final_judge?.whiteScore ?? 0;
+  const fj = data.final_judge;
+  const isV2 = fj?.format === "v2";
+  const isLegacy = !!fj && !isV2;
+  const score = fj?.whiteScore ?? 0;
   const scoreColor =
     score >= 70 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
 
@@ -53,12 +57,46 @@ export default async function AnalysisDetailPage({
         </p>
       </div>
 
-      {/* 最終判定 */}
-      {data.final_judge && (
+      {/* 新形式（応募前の確認ポイント） */}
+      {isV2 && (
+        <div style={{ ...card, backgroundColor: "#f0fdf4" }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>応募前の確認ポイント</h2>
+          <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 14px" }}>
+            口コミ画像と決算資料から読み取れた範囲の整理です。企業の良し悪しを判定するものではありません。
+          </p>
+          <ConfirmedBlock items={fj.confirmed ?? []} conditions={fj.financialConditions} />
+          <SectionDivider />
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>🔍 追加で確認したいこと</h3>
+          <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>
+            {(fj.toCheck ?? []).map((it: any, i: number) => (
+              <li key={i}>
+                {it.text}
+                {it.basis && <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>理由: {it.basis}</span>}
+              </li>
+            ))}
+          </ul>
+          <SectionDivider />
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>💬 面接での質問例</h3>
+          <ul style={{ paddingLeft: 18, margin: 0, fontSize: 14, lineHeight: 1.8 }}>
+            {(fj.questions ?? []).map((it: any, i: number) => (
+              <li key={i}>
+                {it.question}
+                {it.basis && <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>基づく情報: {it.basis}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* 旧形式（スコア表示の最終判定。現在は廃止） */}
+      {isLegacy && (
         <div style={{ ...card, backgroundColor: "#f0fdf4" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 8 }}>
-            最終判定
+            最終判定（旧形式）
           </h2>
+          <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px" }}>
+            この結果は、スコア表示を廃止する前の形式で保存されたものです。現在のアプリでは、このような点数の判定は行っていません。
+          </p>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <span style={{ fontSize: 32, fontWeight: 700, color: scoreColor }}>
               {score}%
@@ -131,7 +169,7 @@ export default async function AnalysisDetailPage({
       {/* IR要約 */}
       <div style={card}>
         <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 8 }}>
-          IR要約
+          決算資料の要約
         </h2>
         <p
           style={{

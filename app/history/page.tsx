@@ -50,20 +50,33 @@ export default async function HistoryPage() {
           >
             <div
               style={{
-                backgroundColor: "#fff",
+                backgroundColor: "#f0fdf4",
+                position: "relative",
                 borderRadius: 14,
-                padding: 16,
+                padding: "16px 36px 16px 16px",
                 marginBottom: 12,
                 boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
               }}
             >
+              <span
+                aria-hidden="true"
+                style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 22, color: "#94a3b8", lineHeight: 1 }}
+              >
+                ›
+              </span>
               <p style={{ fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>
                 {item.company_name || "会社名不明"}
               </p>
               <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 8px" }}>
                 {new Date(item.created_at).toLocaleString("ja-JP")}
               </p>
-              {item.final_judge?.whiteScore !== undefined && (
+              {item.final_judge?.format === "v2" && (
+                <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>応募前の確認ポイント</p>
+              )}
+              {item.final_judge?.format !== "v2" && item.final_judge?.whiteScore !== undefined && (
+                <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 6px" }}>旧形式（スコア表示）</p>
+              )}
+              {item.final_judge?.format !== "v2" && item.final_judge?.whiteScore !== undefined && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div
                     style={{

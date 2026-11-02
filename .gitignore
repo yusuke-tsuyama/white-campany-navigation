@@ -1,3 +1,6 @@
 node_modules
 .next
 .env.local
+
+# 検証用の取得済みXBRL
+_samples/

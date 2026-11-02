@@ -1,25 +1,36 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { ConfirmedBlock, SectionDivider } from "./RichText";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 
+// 画像に表示されていた情報だけ（評価・採点はしない）。lib/reviewFacts.ts の ReviewExtract と同じ形
 type AnalyzeResponse = {
-  extracted?: any;
-  result?: { score: number; label: string; reasons: string[] };
-  explanation?: string;
+  extracted?: {
+    companyName: string | null;
+    overallScore: number | null;
+    reviewCount: number | null;
+    asOf: string | null;
+    rankText: string | null;
+    overtimeHours: number | null;
+    paidLeaveRate: number | null;
+    itemScores: { label: string; score: number }[];
+    unreadable: string[];
+  };
   error?: string;
 };
 type EdinetCandidate = { docID?: string; filerName?: string; secCode?: string; docDescription?: string; submitDateTime?: string; };
-type EdinetSearchResponse = { companyName?: string; count?: number; candidates?: EdinetCandidate[]; searchMethod?: string; error?: string; };
-type EdinetDocResponse = { docID?: string; sourceFile?: string; summary?: string; error?: string; };
-type FinalJudgeResponse = { finalJudge?: { whiteScore: number; confidence: number; summary: string; positives: string[]; risks: string[]; bizQuestions: string[]; bossQuestions: string[]; }; error?: string; };
+type EdinetSearchResponse = { companyName?: string; count?: number; candidates?: EdinetCandidate[]; searchMethod?: string; warning?: string; error?: string; };
+type EdinetDocResponse = { docID?: string; sourceFile?: string; summary?: string; error?: string;  financialView?: { ok: boolean; facts: { text: string; basis: string }[]; toCheck?: { text: string; basis: string }[]; questions?: { question: string; basis: string }[]; conditions: string[]; failReason?: string }; };
+type JudgePair = { text: string; basis: string; category?: "finance" | "work" };
+type FinalJudgeResponse = { finalJudge?: { format: "v2"; financialConditions?: string[]; confirmed: JudgePair[]; toCheck: JudgePair[]; questions: { question: string; basis: string }[]; }; error?: string; };
 type Step = { label: string; done: boolean; active: boolean };
 
 const TUTORIAL_STEPS = [
   { icon: "📷", title: "OpenWorkのスクリーンショットをアップロード", desc: "OpenWorkの企業評価ページのスクリーンショットをアップロードしてください。", sample: true },
-  { icon: "🤖", title: "AIが数値を解析", desc: "残業時間・有給取得率・総合評価などの数値をAIが自動で読み取り、ホワイト企業度スコアを算出します。" },
-  { icon: "📊", title: "決算資料を取得", desc: "上場企業はEDINETから有価証券報告書を自動取得。非上場企業は決算書PDFをアップロードして財務分析できます。" },
-  { icon: "⚖️", title: "総合判定", desc: "口コミデータと決算資料を組み合わせて、より精度の高い企業評価を行います。面接で確認すべき質問も生成します。" },
+  { icon: "🤖", title: "AIが画像の数値を読み取る", desc: "総合評価・回答者数・項目別評価など、画像に表示されている数値をAIが読み取ります。点数での判定や採点は行いません。" },
+  { icon: "📊", title: "決算資料を取得", desc: "上場企業はEDINETから有価証券報告書を自動取得。非上場企業は決算書PDFをアップロードして、数値を取り出せます。" },
+  { icon: "⚖️", title: "確認ポイントの整理", desc: "口コミデータと決算資料から読み取れた事実を整理し、応募前に確認したいことと面接での質問例をまとめます。企業の良し悪しの判定はしません。" },
 ];
 
 const TERMS = `第1条（サービスの目的）
@@ -185,14 +196,30 @@ function btn(color = "#0f172a", disabled = false): React.CSSProperties {
   return { display: "block", width: "100%", padding: "13px 20px", fontSize: 15, fontWeight: 600, backgroundColor: disabled ? "#94a3b8" : color, color: "#fff", border: "none", borderRadius: 10, cursor: disabled ? "not-allowed" : "pointer", textAlign: "center", boxSizing: "border-box" };
 }
 
-function ScoreBar({ score }: { score: number }) {
-  const color = score >= 70 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
+
+/** 撮り方の例（架空の会社のダミー数値の画像。実在の企業の画面ではありません） */
+function ExampleShot() {
   return (
-    <div style={{ margin: "12px 0" }}>
-      <div style={{ height: 12, borderRadius: 99, backgroundColor: "#e2e8f0", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${score}%`, backgroundColor: color, borderRadius: 99, transition: "width 0.6s ease" }} />
-      </div>
-      <p style={{ textAlign: "right", fontSize: 13, color, marginTop: 4, marginBottom: 0 }}>{score}%</p>
+    <div style={{ marginTop: 8, border: "1px dashed #94a3b8", borderRadius: 10, padding: 8, backgroundColor: "#f8fafc" }}>
+      <p style={{ fontSize: 11, color: "#64748b", margin: "0 0 6px", textAlign: "center" }}>イメージ図（架空の会社のダミー数値）</p>
+      <img src="/example-screenshot.jpg" alt="撮影範囲の例（ダミー数値）" style={{ width: "100%", maxWidth: 300, display: "block", margin: "0 auto", borderRadius: 6 }} />
+      <p style={{ fontSize: 11, color: "#64748b", margin: "6px 0 0", textAlign: "center", lineHeight: 1.6 }}>このように、8項目の数値・残業時間・有給休暇消化率が入る範囲で撮影してください。会社名は入力欄に入れるので、画像に写らなくて構いません。</p>
+    </div>
+  );
+}
+
+/** 決算資料の要約の表示。「■」見出し・「・」箇条書きを整形し、念のためMarkdown記号も取り除く */
+function SummaryText({ text }: { text: string }) {
+  const lines = text.split("\n").map((l) => l.replace(/\*\*/g, "").replace(/^#{1,6}\s*/, "").trimEnd());
+  return (
+    <div style={{ fontSize: 14, lineHeight: 1.8, color: "#334155" }}>
+      {lines.map((l, i) => {
+        const t = l.trim();
+        if (!t || /^-{3,}$/.test(t)) return <div key={i} style={{ height: 6 }} />;
+        if (t.startsWith("■")) return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, margin: "12px 0 4px", color: "#0f172a" }}>{t.replace(/^■\s*/, "")}</h3>;
+        if (/^[・\-\*•]\s*/.test(t)) return <div key={i} style={{ paddingLeft: 16, textIndent: -16 }}>・{t.replace(/^[・\-\*•]\s*/, "")}</div>;
+        return <p key={i} style={{ margin: "0 0 4px" }}>{t}</p>;
+      })}
     </div>
   );
 }
@@ -278,7 +305,7 @@ function PrivacyModal({ onAgree, isFirstVisit }: { onAgree: () => void; isFirstV
             <ul style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0, paddingLeft: 18 }}>
               <li>アップロードされた画像から抽出した口コミテキスト・評価スコア</li>
               <li>EDINETから取得した財務情報のサマリー</li>
-              <li>AIが生成した総合判定コメント</li>
+              <li>AIが整理した確認ポイント（確認できたこと・追加で確認したいこと・質問例）</li>
               <li>ユーザーID（ログイン済みの場合）またはゲスト識別情報</li>
               <li>分析実行日時</li>
             </ul>
@@ -298,7 +325,7 @@ function PrivacyModal({ onAgree, isFirstVisit }: { onAgree: () => void; isFirstV
             <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>EDINET（金融庁）</p>
             <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: "0 0 8px" }}>企業名などの検索クエリをEDINETに送信し、有価証券報告書などの公開情報を取得します。個人情報はEDINETには送信しません。</p>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>Supabase</p>
-            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>分析結果（口コミテキスト・財務サマリー・総合判定・ユーザーID・日時）は、Supabase Inc.（米国）が提供するデータベースサービスに保存されます。</p>
+            <p style={{ fontSize: 12, lineHeight: 1.8, color: "#334155", margin: 0 }}>分析結果（口コミテキスト・財務サマリー・確認ポイント・ユーザーID・日時）は、Supabase Inc.（米国）が提供するデータベースサービスに保存されます。</p>
           </section>
           <section style={{ marginBottom: 16 }}>
             <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>5. 情報の利用目的</h3>
@@ -390,6 +417,7 @@ function Tutorial({ onClose }: { onClose: () => void }) {
 export default function AnalyzerClient({ userId }: { userId: string | null }) {
   const [phase, setPhase] = useState<"splash" | "terms" | "privacy" | "tutorial" | "main">("splash");
   const [isFirstVisit, setIsFirstVisit] = useState(true);
+  const [companyInput, setCompanyInput] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -455,7 +483,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
   };
   const handleCloseTutorial = () => { localStorage.setItem("tutorial_seen", "1"); setPhase("main"); };
   const handleReset = () => {
-    setFile(null); setPreview(null); setData(null); setEdinetData(null);
+    setCompanyInput(""); setFile(null); setPreview(null); setData(null); setEdinetData(null);
     setEdinetSkipped(false); setDocData(null); setJudgeData(null);
     setSaveMessage(""); setAnalyzeSteps([]); setJudgeSteps([]);
     if (inputRef.current) inputRef.current.value = "";
@@ -505,7 +533,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
   };
 
   const handleAnalyze = async () => {
-    if (!file) return;
+    if (!file || companyInput.trim().length < 2) return;
     if (!user) {
       const usage = checkGuestLimit();
       if (usage.count >= GUEST_LIMIT) {
@@ -517,14 +545,14 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
     setLoading(true); setData(null); setEdinetData(null); setEdinetSkipped(false); setDocData(null); setJudgeData(null); setSaveMessage("");
     const steps: Step[] = [
       { label: "画像をアップロード中", done: false, active: true },
-      { label: "AIが数値を読み取り中", done: false, active: false },
-      { label: "スコアを計算中", done: false, active: false },
-      { label: "根拠を生成中", done: false, active: false },
+      { label: "AIが画像の数値を読み取り中", done: false, active: false },
+      { label: "読み取り結果を検証中", done: false, active: false },
+      { label: "表示を準備中", done: false, active: false },
     ];
     setAnalyzeSteps([...steps]);
     try {
       steps[0] = { ...steps[0], done: true, active: false }; steps[1] = { ...steps[1], active: true }; setAnalyzeSteps([...steps]);
-      const formData = new FormData(); formData.append("image", file);
+      const formData = new FormData(); formData.append("image", file); formData.append("companyName", companyInput.trim());
       const json = await fetchJson<AnalyzeResponse>("/api/analyze", { method: "POST", body: formData });
       steps[1] = { ...steps[1], done: true, active: false }; steps[2] = { ...steps[2], done: true, active: false }; steps[3] = { ...steps[3], active: true }; setAnalyzeSteps([...steps]);
       await new Promise(r => setTimeout(r, 400));
@@ -551,7 +579,10 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
       fd.append("pdf", pdfFile);
       const result = await fetchJson<any>("/api/pdf-analyze", { method: "POST", body: fd });
       setPdfData(result);
-      setDocData({ summary: `【非上場企業PDF分析】\n企業名: ${result.companyName || "不明"}\n決算期: ${result.fiscalYear || "不明"}\n\n${result.summary || ""}\n\nスコア: ${result.score}/100（${result.label}）\n\n良い点: ${(result.positivePoints || []).join("、")}\n懸念点: ${(result.concerns || []).join("、")}` });
+      setDocData({
+        summary: "非上場企業の決算書PDFから、数値だけを取り出した（文章の記載は要約していない）。",
+        financialView: { ok: !!result.ok, facts: result.facts ?? [], toCheck: result.toCheck ?? [], conditions: result.conditions ?? [], failReason: result.failReason },
+      });
       setEdinetSkipped(true);
     } catch(e: any) {
       alert(friendlyError(e.message));
@@ -569,17 +600,17 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
     finally { setDocLoading(false); }
   };
   const handleFinalJudge = async () => {
-    if (!data?.extracted || !data?.result || !docData?.summary) return;
+    if (!data?.extracted || !docData?.summary) return;
     setJudgeLoading(true); setJudgeData(null);
     const steps: Step[] = [
       { label: "口コミデータを整理中", done: false, active: true },
       { label: "決算資料と照合中", done: false, active: false },
-      { label: "総合判定を生成中", done: false, active: false },
+      { label: "確認ポイントを整理中", done: false, active: false },
     ];
     setJudgeSteps([...steps]);
     try {
       steps[0] = { ...steps[0], done: true, active: false }; steps[1] = { ...steps[1], active: true }; setJudgeSteps([...steps]);
-      const json = await fetchJson<FinalJudgeResponse>("/api/final-judge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ extracted: data.extracted, scoreResult: data.result, irSummary: docData.summary }) });
+      const json = await fetchJson<FinalJudgeResponse>("/api/final-judge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ extracted: data.extracted, irSummary: docData.summary, financialView: docData.financialView }) });
       steps[1] = { ...steps[1], done: true, active: false }; steps[2] = { ...steps[2], active: true }; setJudgeSteps([...steps]);
       await new Promise(r => setTimeout(r, 400));
       steps[2] = { ...steps[2], done: true, active: false }; setJudgeSteps([...steps]);
@@ -588,10 +619,10 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
     finally { setJudgeLoading(false); }
   };
   const handleSave = async () => {
-    if (!data?.extracted || !data?.result || !judgeData?.finalJudge) return;
+    if (!data?.extracted || !judgeData?.finalJudge) return;
     setSaveLoading(true); setSaveMessage("");
     try {
-      const json = await fetchJson<{ saved?: boolean; error?: string }>("/api/save-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyName: data?.extracted?.companyName ?? null, extracted: data.extracted, scoreResult: data.result, irSummary: docData?.summary ?? null, finalJudge: judgeData.finalJudge }) });
+      const json = await fetchJson<{ saved?: boolean; error?: string }>("/api/save-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyName: data?.extracted?.companyName ?? null, extracted: data.extracted, irSummary: docData?.summary ?? null, finalJudge: judgeData.finalJudge }) });
       setSaveMessage(json.saved ? "保存しました！" : json.error || "保存に失敗しました。");
     } catch (e: any) { setSaveMessage(friendlyError(e?.message || "保存に失敗しました。")); }
     finally { setSaveLoading(false); }
@@ -624,7 +655,15 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
           </div>
         </div>
         <div style={card}>
-          <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 12 }}>OpenWorkのスクリーンショットをアップロード<br/><span style={{ fontSize: 12, color: "#94a3b8" }}>会社名・評価スコアが見える範囲で撮影</span></p>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 4 }}>① 企業名（正式名称）</label>
+          <input type="text" value={companyInput} onChange={e => setCompanyInput(e.target.value.slice(0, 60))} placeholder="例: 株式会社ABCD" style={{ width: "100%", boxSizing: "border-box", padding: "12px", fontSize: 16, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 4 }} />
+          <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 16px", lineHeight: 1.6 }}>「株式会社」などを含む正式名称を、OpenWorkのページからコピーして貼り付けてください。決算資料の検索に使います。入力した企業名と、画像の企業が同じかご確認ください。</p>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 4 }}>② OpenWorkのスクリーンショット</label>
+          <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px", lineHeight: 1.6 }}>「社員による会社評価」のレーダーチャート（8項目の数値）が、すべて入るように撮影してください。</p>
+          <details style={{ marginBottom: 12 }}>
+            <summary style={{ fontSize: 12, color: "#1d4ed8", cursor: "pointer" }}>撮り方の例を見る</summary>
+            <ExampleShot />
+          </details>
           <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleFileChange} style={{ display: "none" }} />
           <div onClick={() => inputRef.current?.click()} style={{ border: "2px dashed #cbd5e1", borderRadius: 12, padding: "28px 16px", textAlign: "center", cursor: "pointer", backgroundColor: preview ? "#f1f5f9" : "#f8fafc" }}>
             {preview ? (
@@ -632,13 +671,13 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
             ) : (
               <>
                 <div style={{ fontSize: 36, marginBottom: 8 }}>📷</div>
-                <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>タップして画像を選択</p><p style={{ fontSize: 12, color: "#94a3b8", margin: "4px 0 0" }}>会社名・評価スコアが見える範囲で撮影</p>
+                <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>タップして画像を選択</p>
                 <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, marginBottom: 0 }}>PNG / JPEG / WebP・5MB以内</p>
               </>
             )}
           </div>
           {file && <div style={{ marginTop: 8 }}><button onClick={() => { setFile(null); setPreview(null); setData(null); setEdinetData(null); setJudgeData(null); if (inputRef.current) inputRef.current.value = ""; }} style={{ fontSize: 13, padding: "8px 16px", borderRadius: 8, border: "1px solid #dc2626", background: "#fff", color: "#dc2626", cursor: "pointer", width: "100%" }}>🔄 やり直す</button></div>}
-    {file && <div style={{ marginTop: 8 }}><button onClick={handleAnalyze} disabled={loading} style={btn("#0f172a", loading)}>{loading ? "解析中..." : "このスクリーンショットを分析する"}</button></div>}
+    {file && <div style={{ marginTop: 8 }}><button onClick={handleAnalyze} disabled={loading || companyInput.trim().length < 2} style={btn("#1d4ed8", loading || companyInput.trim().length < 2)}>{loading ? "解析中..." : companyInput.trim().length < 2 ? "企業名を入力してください" : "このスクリーンショットを分析する"}</button></div>}
           {loading && analyzeSteps.length > 0 && <StepProgress steps={analyzeSteps} />}
         </div>
         {data?.error && (
@@ -656,28 +695,50 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
             )}
           </div>
         )}
-        {data?.result && (
+        {data?.extracted && (
           <div style={card}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>画像解析結果</h2>
-            <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 8 }}>{data.result.label}</p>
-            <ScoreBar score={data.result.score} />
-            <div style={{ fontSize: 14, lineHeight: 1.8, color: "#334155" }}>
-            {data.explanation?.split("\n").map((line, i) => (
-              <p key={i} style={{
-                margin: line.startsWith("【") ? "16px 0 4px" : line.startsWith("・") ? "2px 0" : "8px 0",
-                fontWeight: line.startsWith("【") ? 700 : 400,
-                fontSize: line.startsWith("【") ? 15 : 14,
-              }}>
-                {line || "\u00A0"}
-              </p>
-            ))}
-          </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 12 }}>口コミ画像から読み取れた情報</h2>
+            {(() => {
+              const e = data.extracted!;
+              const row = (label: string, value: string) => (
+                <div style={{ marginBottom: 8, fontSize: 14, lineHeight: 1.7 }}>
+                  <span style={{ fontWeight: 600 }}>{label}</span>
+                  <span style={{ marginLeft: 8, color: "#0f172a" }}>{value}</span>
+                </div>
+              );
+              return (
+                <div>
+                  {e.companyName && row("企業名", e.companyName)}
+                  {e.overallScore !== null && row("総合評価", String(e.overallScore))}
+                  {e.reviewCount !== null && row("回答者数", `${e.reviewCount.toLocaleString("ja-JP")}人`)}
+                  {e.asOf && row("集計・投稿時点", e.asOf)}
+                  {e.rankText && row("順位の表記", e.rankText)}
+                  {e.overtimeHours !== null && row("残業時間", `${e.overtimeHours.toFixed(1)}時間`)}
+                  {e.paidLeaveRate !== null && row("有給休暇消化率", `${e.paidLeaveRate.toFixed(1)}%`)}
+                  {e.itemScores.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>項目別評価</div>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.8 }}>
+                        {e.itemScores.map((it, i) => <li key={i}>{it.label}　{it.score.toFixed(1)}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {e.unreadable.length > 0 && (
+                    <div style={{ marginBottom: 4, padding: "10px 12px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>読み取れなかった項目</div>
+                      <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7 }}>{e.unreadable.join("、")}</div>
+                      <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.6, marginTop: 4 }}>画像に写っていない項目です。</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {data.extracted?.companyName && (
               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                 <button onClick={handleSearchEdinet} disabled={edinetLoading} style={btn("#1d4ed8", edinetLoading)}>{edinetLoading ? "決算資料を検索中..." : `「${data.extracted.companyName}」の決算資料を探す`}</button>
-                <button onClick={handleSkipEdinet} style={btn("#64748b")}>非上場・決算資料なしで判定する</button>
+                <button onClick={handleSkipEdinet} style={btn("#64748b")}>非上場・決算資料なしで確認ポイントを整理する</button>
             <div style={{ marginTop: 8, padding: "12px", backgroundColor: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", margin: "0 0 8px" }}>📄 非上場企業の決算書PDFを分析する</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", margin: "0 0 8px" }}>📄 非上場企業の決算書PDFから数値を取り出す</p>
               <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 10px", lineHeight: 1.6 }}>PDFは解析後即時削除されます。機密情報のアップロードは自己責任でお願いします。</p>
               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={pdfConsent} onChange={e => setPdfConsent(e.target.checked)} />
@@ -687,7 +748,7 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
                 <div>
                   <input type="file" accept="application/pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} style={{ fontSize: 12, marginBottom: 8, width: "100%" }} />
                   {pdfFile && <p style={{ fontSize: 11, color: "#64748b", margin: "0 0 8px" }}>📎 {pdfFile.name}（{(pdfFile.size/1024/1024).toFixed(1)}MB）</p>}
-                  <button onClick={handlePdfAnalyze} disabled={!pdfFile || pdfLoading} style={btn("#0891b2", !pdfFile || pdfLoading)}>{pdfLoading ? "分析中..." : "このPDFを分析する"}</button>
+                  <button onClick={handlePdfAnalyze} disabled={!pdfFile || pdfLoading} style={btn("#0891b2", !pdfFile || pdfLoading)}>{pdfLoading ? "読み取り中..." : "このPDFから数値を取り出す"}</button>
                 </div>
               )}
             </div>
@@ -703,33 +764,34 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
         {edinetData?.candidates && (
           <div style={card}>
             <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 12 }}>決算資料の候補（{edinetData.count}件）</h2>
+            {edinetData.warning && <p style={{ fontSize: 12, color: "#92400e", backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 10px", margin: "0 0 12px", lineHeight: 1.6 }}>{edinetData.warning}</p>}
             {edinetData.candidates.length === 0 ? (
               <>
                 <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: "#92400e", margin: "0 0 4px" }}>📋 EDINETに決算資料が見つかりませんでした。</p>
-                  <p style={{ fontSize: 13, color: "#78350f", margin: 0, lineHeight: 1.6 }}>この企業は非上場の可能性があります。決算書PDFをお持ちの場合は、下のPDFアップロード欄からアップロードすると財務分析が可能です。</p>
+                  <p style={{ fontSize: 13, color: "#78350f", margin: 0, lineHeight: 1.6 }}>この企業は非上場の可能性があります。決算書PDFをお持ちの場合は、下のPDFアップロード欄からアップロードすると、数値を取り出せます。</p>
                 </div>
-                <button onClick={handleSkipEdinet} style={btn("#64748b")}>決算資料なしで判定する</button>
+                <button onClick={handleSkipEdinet} style={btn("#64748b")}>決算資料なしで確認ポイントを整理する</button>
               </>
             ) : (
               edinetData.candidates.map((c, i) => (
                 <div key={`${c.docID}-${i}`} style={{ paddingTop: 12, paddingBottom: 12, borderBottom: i < edinetData.candidates!.length - 1 ? "1px solid #f1f5f9" : "none" }}>
                   <p style={{ fontWeight: 600, fontSize: 14, margin: "0 0 2px" }}>{c.filerName || "名称不明"}</p>
-                  <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px" }}>{c.docDescription}　{c.submitDateTime?.slice(0, 10)}</p>
-                  <button onClick={() => handleFetchDocument(c.docID)} disabled={docLoading} style={btn("#0891b2", docLoading)}>{docLoading ? "要約中..." : "この決算資料を要約する"}</button>
+                  <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px" }}>{c.docDescription}　提出日 {c.submitDateTime?.slice(0, 10)}</p>
+                  <button onClick={() => handleFetchDocument(c.docID)} disabled={docLoading} style={btn("#1d4ed8", docLoading)}>{docLoading ? "要約中..." : "この決算資料を要約する"}</button>
                 </div>
               ))
             )}
           </div>
         )}
-        {edinetSkipped && <div style={{ ...card, backgroundColor: "#f8fafc" }}><p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>ℹ️ 決算資料なしで判定します（非上場・EDINET未対応企業）</p></div>}
+        {edinetSkipped && <div style={{ ...card, backgroundColor: "#f8fafc" }}><p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>ℹ️ 決算資料なしで確認ポイントを整理します（非上場・EDINET未対応企業）</p></div>}
         {docData?.error && !edinetSkipped && <div style={{ ...card, backgroundColor: "#fef2f2" }}><p style={{ color: "#dc2626", fontSize: 14, margin: 0 }}>⚠️ {docData.error}</p></div>}
         {docData?.summary && (
           <div style={card}>
             <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 12 }}>決算資料の要約</h2>
-            <p style={{ fontSize: 14, lineHeight: 1.8, color: "#334155", whiteSpace: "pre-wrap", marginTop: 0 }}>{docData.summary}</p>
+            <SummaryText text={docData.summary} />
             <div style={{ marginTop: 12 }}>
-              <button onClick={handleFinalJudge} disabled={judgeLoading} style={btn("#7c3aed", judgeLoading)}>{judgeLoading ? "最終判定中..." : "口コミ＋決算資料で最終判定する"}</button>
+              <button onClick={handleFinalJudge} disabled={judgeLoading} style={btn("#1d4ed8", judgeLoading)}>{judgeLoading ? "整理中..." : "確認ポイントを整理する"}</button>
             </div>
             {judgeLoading && judgeSteps.length > 0 && <StepProgress steps={judgeSteps} />}
           </div>
@@ -742,19 +804,16 @@ export default function AnalyzerClient({ userId }: { userId: string | null }) {
         )}
         {judgeData?.finalJudge && (
           <div style={{ ...card, backgroundColor: "#f0fdf4" }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>最終判定</h2>
-            <p style={{ fontSize: 12, color: "#64748b", marginTop: 0, marginBottom: 4 }}>確信度: {judgeData.finalJudge.confidence}%</p>
-            <ScoreBar score={judgeData.finalJudge.whiteScore} />
-            <p style={{ fontSize: 14, lineHeight: 1.8, color: "#334155", whiteSpace: "pre-wrap", marginBottom: 16 }}>{judgeData.finalJudge.summary}</p>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#16a34a", marginBottom: 6, marginTop: 0 }}>✅ プラス要素</h3>
-            <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.positives.map((item, i) => <li key={i}>{item}</li>)}</ul>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#dc2626", marginBottom: 6, marginTop: 0 }}>⚠️ リスク</h3>
-            <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.risks.map((item, i) => <li key={i}>{item}</li>)}</ul>
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>💼 財務・事業リスクの確認</h3>
-            <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.bizQuestions.map((item, i) => <li key={i}>{item}</li>)}</ul>
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>👤 上司・職場環境の見極め</h3>
-            <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.bossQuestions.map((item, i) => <li key={i}>{item}</li>)}</ul>
-            <button onClick={handleSave} disabled={saveLoading} style={btn("#0f172a", saveLoading)}>{saveLoading ? "保存中..." : "この診断を保存する"}</button>
+            <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>応募前の確認ポイント</h2>
+            <p style={{ fontSize: 12, color: "#64748b", marginTop: 0, marginBottom: 16, lineHeight: 1.6 }}>口コミ画像と決算資料から読み取れた範囲の整理です。企業の良し悪しを判定するものではありません。</p>
+            <ConfirmedBlock items={judgeData.finalJudge.confirmed} conditions={judgeData.finalJudge.financialConditions} />
+            <SectionDivider />
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>🔍 追加で確認したいこと</h3>
+            <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.toCheck.map((it, i) => <li key={i}>{it.text}{it.basis && <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>理由: {it.basis}</span>}</li>)}</ul>
+            <SectionDivider />
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, marginTop: 0 }}>💬 面接での質問例</h3>
+            <ul style={{ paddingLeft: 18, margin: "0 0 16px", fontSize: 14, lineHeight: 1.8 }}>{judgeData.finalJudge.questions.map((it, i) => <li key={i}>{it.question}{it.basis && <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>基づく情報: {it.basis}</span>}</li>)}</ul>
+            <button onClick={handleSave} disabled={saveLoading} style={btn("#1d4ed8", saveLoading)}>{saveLoading ? "保存中..." : "この診断を保存する"}</button>
             {saveMessage && <p style={{ marginTop: 10, fontSize: 14, textAlign: "center", color: "#16a34a" }}>{saveMessage}</p>}
             <div style={{ marginTop: 12 }}><button onClick={handleReset} style={{ ...btn("#f1f5f9"), color: "#0f172a" }}>🔄 次の企業を分析する</button></div>
           </div>
